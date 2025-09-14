@@ -105,10 +105,18 @@ async def get_assistants():
 @app.post("/query")
 async def query_documents(
     question: str = Form(...),
-    assistant_id: Optional[str] = Form(None)
+    assistant_id: Optional[str] = Form(None),
+    assistant_ids: Optional[str] = Form(None)
 ):
     try:
-        response = rag_service.get_answer(question, assistant_id)
+        # Handle multiple assistant IDs
+        if assistant_ids:
+            import json
+            assistant_list = json.loads(assistant_ids)
+            response = rag_service.get_answer(question, assistant_list)
+        else:
+            # Handle single assistant ID (backward compatibility)
+            response = rag_service.get_answer(question, assistant_id)
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")

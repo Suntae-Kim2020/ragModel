@@ -14,7 +14,9 @@ import {
   Alert,
   CircularProgress,
   Divider,
-  Chip
+  Chip,
+  Checkbox,
+  ListItemText
 } from '@mui/material';
 import { Send, Source } from '@mui/icons-material';
 import axios from 'axios';
@@ -23,7 +25,7 @@ const API_BASE_URL = 'http://localhost:8000';
 
 function UserPage({ user }) {
   const [assistants, setAssistants] = useState([]);
-  const [selectedAssistant, setSelectedAssistant] = useState('');
+  const [selectedAssistant, setSelectedAssistant] = useState([]);
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [sources, setSources] = useState([]);
@@ -62,8 +64,8 @@ function UserPage({ user }) {
 
     const formData = new FormData();
     formData.append('question', question);
-    if (selectedAssistant) {
-      formData.append('assistant_id', selectedAssistant);
+    if (selectedAssistant.length > 0) {
+      formData.append('assistant_ids', JSON.stringify(selectedAssistant));
     }
 
     try {
@@ -117,14 +119,27 @@ function UserPage({ user }) {
               <FormControl fullWidth sx={{ mb: 2 }}>
                 <InputLabel>어시스턴트 선택 (선택사항)</InputLabel>
                 <Select
-                  value={selectedAssistant}
+                  multiple
+                  value={selectedAssistant || []}
                   label="어시스턴트 선택 (선택사항)"
                   onChange={(e) => setSelectedAssistant(e.target.value)}
+                  renderValue={(selected) => {
+                    if (selected.length === 0) {
+                      return '전체 문서';
+                    }
+                    return (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => (
+                          <Chip key={value} label={value} size="small" />
+                        ))}
+                      </Box>
+                    );
+                  }}
                 >
-                  <MenuItem value="">전체 문서</MenuItem>
                   {assistants.map((assistant) => (
                     <MenuItem key={assistant} value={assistant}>
-                      {assistant}
+                      <Checkbox checked={selectedAssistant.indexOf(assistant) > -1} />
+                      <ListItemText primary={assistant} />
                     </MenuItem>
                   ))}
                 </Select>

@@ -188,12 +188,26 @@ class RAGService:
         # 2. 질문을 임베딩으로 변환
         question_embedding = self.embedding_model.encode(question).tolist()
         
-        # 3. 유사한 문서 청크 검색
-        similar_chunks = self.opensearch_client.search_similar_chunks(
-            question_embedding, 
-            assistant_id=assistant_id,
-            size=5
-        )
+        # 3. 유사한 문서 청크 검색 (여러 어시스턴트 지원)
+        if isinstance(assistant_id, list):
+            # 여러 어시스턴트에서 검색
+            all_chunks = []
+            for aid in assistant_id:
+                chunks = self.opensearch_client.search_similar_chunks(
+                    question_embedding, 
+                    assistant_id=aid,
+                    size=3  # 각 어시스턴트당 3개씩
+                )
+                all_chunks.extend(chunks)
+            # 점수순으로 정렬하고 상위 5개 선택
+            similar_chunks = sorted(all_chunks, key=lambda x: x['_score'], reverse=True)[:5]
+        else:
+            # 단일 어시스턴트 또는 전체 검색
+            similar_chunks = self.opensearch_client.search_similar_chunks(
+                question_embedding, 
+                assistant_id=assistant_id,
+                size=5
+            )
         
         if not similar_chunks:
             return {
