@@ -32,7 +32,12 @@ function AdminPage({ user }) {
 
   useEffect(() => {
     fetchAssistants();
-  }, []);
+    
+    // 로그인한 사용자의 기관명을 자동으로 설정
+    if (user?.organization) {
+      setOrganization(user.organization);
+    }
+  }, [user]);
 
   const fetchAssistants = async () => {
     try {
@@ -111,10 +116,7 @@ function AdminPage({ user }) {
         console.error('Failed to extract keywords from filename:', error);
       }
       
-      // 파일명에서 기관명 추출해서 자동 입력
-      if (selectedFile.name.includes('전북대') || selectedFile.name.includes('전북대학교')) {
-        setOrganization('전북대학교');
-      }
+      // 기관명은 로그인한 사용자의 기관명을 사용 (이미 설정됨)
     } else {
       setMessage({ type: 'error', text: 'PDF 파일만 업로드 가능합니다.' });
       setFile(null);
@@ -163,11 +165,10 @@ function AdminPage({ user }) {
         text: `문서가 성공적으로 업로드되었습니다. (${response.data.total_chunks}개 청크, ${response.data.total_pages}페이지)` 
       });
       
-      // Reset form
+      // Reset form (기관명은 로그인한 사용자 기관명 유지)
       setFile(null);
       setDocumentTitle('');
       setTags('');
-      setOrganization('');
       setAssistantId('');
       document.getElementById('file-input').value = '';
       
@@ -277,7 +278,10 @@ function AdminPage({ user }) {
             fullWidth
             label="기관명"
             value={organization}
-            onChange={(e) => setOrganization(e.target.value)}
+            InputProps={{
+              readOnly: true,
+            }}
+            helperText="로그인한 사용자의 기관명이 자동으로 설정됩니다"
             required
             sx={{ mb: 3 }}
           />
