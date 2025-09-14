@@ -26,7 +26,7 @@ const TEST_ACCOUNTS = {
     password: 'Admin123!',
     role: 'B', 
     name: 'Organization Administrator',
-    organization: '테스트 기관',
+    organization: '전북대학교',
     permissions: ['소속 기관 사용자 관리', '소속 기관 문서 관리', '소속 기관 설정 관리']
   },
   // Organization User
@@ -34,7 +34,7 @@ const TEST_ACCOUNTS = {
     password: 'User123!',
     role: 'C',
     name: 'Organization User', 
-    organization: '테스트 기관',
+    organization: '전북대학교',
     permissions: ['소속 기관 문서 조회', '본인 업로드 문서 관리']
   }
 };
@@ -189,7 +189,7 @@ function LoginPage({ onLogin }) {
                 sx={{ mb: 1 }}
                 onClick={() => handleQuickLogin('admin@test.go.kr', 'admin')}
               >
-                기관 관리자 (admin@test.go.kr)
+                전북대 관리자 (admin@test.go.kr)
               </Button>
             </Box>
           ) : (
@@ -199,7 +199,7 @@ function LoginPage({ onLogin }) {
               fullWidth
               onClick={() => handleQuickLogin('user@test.go.kr', 'user')}
             >
-              일반 사용자 (user@test.go.kr)
+              전북대 사용자 (user@test.go.kr)
             </Button>
           )}
         </Paper>
@@ -245,8 +245,8 @@ function LoginPage({ onLogin }) {
           </Typography>
           <Typography variant="body2">
             • 시스템 관리자: admin@ragp.system / Admin123!<br/>
-            • 기관 관리자: admin@test.go.kr / Admin123!<br/>
-            • 일반 사용자: user@test.go.kr / User123!
+            • 전북대 관리자: admin@test.go.kr / Admin123!<br/>
+            • 전북대 사용자: user@test.go.kr / User123!
           </Typography>
         </Box>
       </Paper>
