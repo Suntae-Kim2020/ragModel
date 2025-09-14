@@ -201,6 +201,37 @@ function AdminPage({ user }) {
         )}
 
         <Box component="form" onSubmit={handleSubmit}>
+          <TextField
+            fullWidth
+            label="기관명"
+            value={organization}
+            InputProps={{
+              readOnly: true,
+            }}
+            helperText="로그인한 사용자의 기관명이 자동으로 설정됩니다"
+            required
+            sx={{ mb: 3 }}
+          />
+
+          <Autocomplete
+            fullWidth
+            freeSolo
+            options={existingAssistants}
+            value={assistantId}
+            onInputChange={(event, newValue) => {
+              setAssistantId(newValue || '');
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="어시스턴트 ID"
+                required
+                helperText="기존 어시스턴트를 선택하거나 새로운 ID를 입력하세요"
+              />
+            )}
+            sx={{ mb: 3 }}
+          />
+
           <Box sx={{ mb: 3 }}>
             <input
               accept="application/pdf"
@@ -273,37 +304,6 @@ function AdminPage({ user }) {
               ))}
             </Box>
           )}
-
-          <TextField
-            fullWidth
-            label="기관명"
-            value={organization}
-            InputProps={{
-              readOnly: true,
-            }}
-            helperText="로그인한 사용자의 기관명이 자동으로 설정됩니다"
-            required
-            sx={{ mb: 3 }}
-          />
-
-          <Autocomplete
-            fullWidth
-            freeSolo
-            options={existingAssistants}
-            value={assistantId}
-            onInputChange={(event, newValue) => {
-              setAssistantId(newValue || '');
-            }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="어시스턴트 ID"
-                required
-                helperText="기존 어시스턴트를 선택하거나 새로운 ID를 입력하세요"
-              />
-            )}
-            sx={{ mb: 3 }}
-          />
 
           {uploading && <LinearProgress sx={{ mb: 3 }} />}
 
