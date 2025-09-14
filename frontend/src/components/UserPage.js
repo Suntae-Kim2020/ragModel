@@ -21,7 +21,7 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8000';
 
-function UserPage() {
+function UserPage({ user }) {
   const [assistants, setAssistants] = useState([]);
   const [selectedAssistant, setSelectedAssistant] = useState('');
   const [question, setQuestion] = useState('');
@@ -97,9 +97,14 @@ function UserPage() {
         {/* 좌측: 질의응답 영역 */}
         <Grid item xs={12} md={8}>
           <Paper sx={{ p: 3, height: 'calc(100vh - 150px)', display: 'flex', flexDirection: 'column' }}>
-            <Typography variant="h5" gutterBottom>
-              질의응답
-            </Typography>
+            <Box sx={{ mb: 2, p: 2, bgcolor: 'primary.main', color: 'white', borderRadius: 1 }}>
+              <Typography variant="h6">
+                질의응답 시스템
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                {user?.name} ({user?.email}) - {user?.organization}
+              </Typography>
+            </Box>
             
             {message && (
               <Alert severity={message.type} sx={{ mb: 2 }}>

@@ -20,7 +20,7 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8000';
 
-function AdminPage() {
+function AdminPage({ user }) {
   const [file, setFile] = useState(null);
   const [documentTitle, setDocumentTitle] = useState('');
   const [tags, setTags] = useState('');
@@ -184,9 +184,14 @@ function AdminPage() {
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
       <Paper sx={{ p: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          문서 업로드 관리
-        </Typography>
+        <Box sx={{ mb: 3, p: 2, bgcolor: 'primary.main', color: 'white', borderRadius: 1 }}>
+          <Typography variant="h5">
+            문서 업로드 관리
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            {user?.name} ({user?.email}) - {user?.organization}
+          </Typography>
+        </Box>
         
         {message && (
           <Alert severity={message.type} sx={{ mb: 3 }}>
