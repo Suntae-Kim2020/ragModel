@@ -50,7 +50,12 @@ jobs:
     - name: Build and push backend image
       run: |
         cd backend
-        gcloud builds submit --tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }} --quiet
+        BUILD_ID=$(gcloud builds submit --tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }} --async --format="value(id)")
+        echo "Backend build ID: $BUILD_ID"
+        
+        # Wait for build to complete
+        echo "Waiting for backend build to complete..."
+        gcloud builds wait $BUILD_ID --format="value(status)"
 
     - name: Deploy backend to Cloud Run
       run: |
@@ -88,7 +93,12 @@ jobs:
         GENERATE_SOURCEMAP=false
         EOF
         
-        gcloud builds submit --tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }} --quiet
+        BUILD_ID=$(gcloud builds submit --tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }} --async --format="value(id)")
+        echo "Frontend build ID: $BUILD_ID"
+        
+        # Wait for build to complete
+        echo "Waiting for frontend build to complete..."
+        gcloud builds wait $BUILD_ID --format="value(status)"
 
     - name: Deploy frontend to Cloud Run
       run: |
