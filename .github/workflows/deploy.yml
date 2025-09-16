@@ -20,6 +20,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
     - name: Setup Google Cloud CLI
       uses: google-github-actions/setup-gcloud@v2
       with:
@@ -28,11 +33,6 @@ jobs:
     - name: Configure Docker to use gcloud as a credential helper
       run: |
         gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
-
-    - name: Authenticate to Google Cloud
-      uses: google-github-actions/auth@v2
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
 
     - name: Enable required APIs
       run: |
@@ -50,8 +50,10 @@ jobs:
     - name: Build and push backend image
       run: |
         cd backend
-        echo "Building backend image with Cloud Build..."
-        gcloud builds submit --config=cloudbuild.yaml --substitutions=_IMAGE_URL=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }}
+        echo "Building backend image directly with Docker..."
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }} .
+        echo "Pushing backend image to registry..."
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }}
 
     - name: Deploy backend to Cloud Run
       run: |
@@ -89,8 +91,10 @@ jobs:
         GENERATE_SOURCEMAP=false
         EOF
         
-        echo "Building frontend image with Cloud Build..."
-        gcloud builds submit --config=cloudbuild.yaml --substitutions=_IMAGE_URL=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }}
+        echo "Building frontend image directly with Docker..."
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }} .
+        echo "Pushing frontend image to registry..."
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }}
 
     - name: Deploy frontend to Cloud Run
       run: |
