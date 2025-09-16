@@ -50,10 +50,8 @@ jobs:
     - name: Build and push backend image
       run: |
         cd backend
-        echo "Building backend Docker image..."
-        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }} .
-        echo "Pushing backend image to registry..."
-        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }}
+        echo "Building backend image with Cloud Build..."
+        gcloud builds submit --config=cloudbuild.yaml --substitutions=_IMAGE_URL=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }}
 
     - name: Deploy backend to Cloud Run
       run: |
@@ -91,10 +89,8 @@ jobs:
         GENERATE_SOURCEMAP=false
         EOF
         
-        echo "Building frontend Docker image..."
-        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }} .
-        echo "Pushing frontend image to registry..."
-        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }}
+        echo "Building frontend image with Cloud Build..."
+        gcloud builds submit --config=cloudbuild.yaml --substitutions=_IMAGE_URL=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }}
 
     - name: Deploy frontend to Cloud Run
       run: |

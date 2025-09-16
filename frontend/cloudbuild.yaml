@@ -1,0 +1,18 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '$_IMAGE_URL', '.']
+    timeout: '1200s'
+
+  # Push the container image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '$_IMAGE_URL']
+    timeout: '600s'
+
+options:
+  machineType: 'E2_HIGHCPU_4'
+  diskSizeGb: 50
+  substitutionOption: 'ALLOW_LOOSE'
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '2400s'
