@@ -28,12 +28,12 @@ WORKDIR /app
 # Copy built app from build stage
 COPY --from=build /app/build ./build
 
-# Expose port
-EXPOSE 3000
+# Expose port (Cloud Run will set PORT environment variable)
+EXPOSE 8080
 
-# Health check
+# Health check using PORT environment variable
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-8080}/ || exit 1
 
-# Start serve on port 3000
-CMD ["serve", "-s", "build", "-l", "3000"]
+# Start serve on port from environment variable (Cloud Run requirement)
+CMD sh -c "serve -s build -l ${PORT:-8080}"

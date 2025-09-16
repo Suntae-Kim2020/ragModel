@@ -5,6 +5,10 @@
 
 set -e
 
+# Add gcloud to PATH and set custom config directory
+export PATH=$PATH:/Users/suntaekim/google-cloud-sdk/bin
+export CLOUDSDK_CONFIG=~/gcloud_config
+
 # Configuration
 PROJECT_ID=${PROJECT_ID:-"your-gcp-project-id"}
 REGION=${REGION:-"asia-northeast3"}  # Seoul region
@@ -104,7 +108,7 @@ gcloud run deploy ${FRONTEND_SERVICE_NAME} \
     --cpu 1 \
     --concurrency 100 \
     --max-instances 5 \
-    --port 3000 \
+    --port 8080 \
     --set-env-vars "ENVIRONMENT=production" \
     --set-env-vars "REACT_APP_API_URL=${BACKEND_URL}" \
     --timeout 300
