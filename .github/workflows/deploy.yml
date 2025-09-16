@@ -51,7 +51,7 @@ jobs:
       run: |
         cd backend
         echo "Building backend image..."
-        gcloud builds submit --tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }}
+        gcloud builds submit --tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }} --quiet
 
     - name: Deploy backend to Cloud Run
       run: |
@@ -90,7 +90,7 @@ jobs:
         EOF
         
         echo "Building frontend image..."
-        gcloud builds submit --tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }}
+        gcloud builds submit --tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }} --quiet
 
     - name: Deploy frontend to Cloud Run
       run: |
