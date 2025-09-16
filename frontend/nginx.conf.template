@@ -1,0 +1,49 @@
+server {
+    listen ${PORT};
+    server_name localhost;
+    
+    # Root directory for the React build files
+    root /usr/share/nginx/html;
+    index index.html index.htm;
+    
+    # Handle React Router - all routes should serve index.html
+    location / {
+        try_files ${DOLLAR}uri ${DOLLAR}uri/ /index.html;
+    }
+    
+    # Cache static assets for better performance
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)${DOLLAR} {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        add_header X-Content-Type-Options nosniff;
+    }
+    
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types
+        text/plain
+        text/css
+        text/js
+        text/xml
+        text/javascript
+        application/javascript
+        application/xml+rss
+        application/json;
+    
+    # Health check endpoint for Cloud Run
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+}

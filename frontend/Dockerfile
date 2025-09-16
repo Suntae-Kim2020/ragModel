@@ -16,26 +16,22 @@ COPY . .
 # Build the app
 RUN npm run build
 
-# Production stage - use Node.js serve instead of nginx
-FROM node:18-alpine
-
-# Install serve globally and wget for health checks
-RUN npm install -g serve && apk add --no-cache wget
-
-# Set working directory
-WORKDIR /app
+# Production stage - use nginx for better stability
+FROM nginx:alpine
 
 # Copy built app from build stage
-COPY --from=build /app/build ./build
+COPY --from=build /app/build /usr/share/nginx/html
 
-# Create a non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nextjs -u 1001
-RUN chown -R nextjs:nodejs /app
-USER nextjs
+# Create nginx configuration template
+RUN rm /etc/nginx/conf.d/default.conf
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 
-# Expose port (Cloud Run will set PORT environment variable)
+# Set environment variable for nginx port substitution
+ENV PORT 8080
+ENV DOLLAR $
+
+# Expose port
 EXPOSE 8080
 
-# Start serve on port from environment variable (Cloud Run requirement)
-CMD serve -s build -p ${PORT:-8080} --host 0.0.0.0 --no-clipboard
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
