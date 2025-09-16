@@ -21,20 +21,36 @@ const TEST_ACCOUNTS = {
     organization: 'RAGP System',
     permissions: ['전체 시스템 관리', '조직 관리', '사용자 승인/거부', '모든 문서 접근']
   },
-  // Organization Admin
-  'admin@test.go.kr': {
+  // Organization Admin - 전북대학교
+  'admin@jbnu.ac.kr': {
     password: 'Admin123!',
     role: 'B', 
     name: 'Organization Administrator',
     organization: '전북대학교',
     permissions: ['소속 기관 사용자 관리', '소속 기관 문서 관리', '소속 기관 설정 관리']
   },
-  // Organization User
-  'user@test.go.kr': {
+  // Organization User - 전북대학교
+  'user@jbnu.ac.kr': {
     password: 'User123!',
     role: 'C',
     name: 'Organization User', 
     organization: '전북대학교',
+    permissions: ['소속 기관 문서 조회', '본인 업로드 문서 관리']
+  },
+  // Organization Admin - 고려대학교
+  'admin@korea.ac.kr': {
+    password: 'Admin123!',
+    role: 'B', 
+    name: 'Korea University Administrator',
+    organization: '고려대학교',
+    permissions: ['소속 기관 사용자 관리', '소속 기관 문서 관리', '소속 기관 설정 관리']
+  },
+  // Organization User - 고려대학교
+  'user@korea.ac.kr': {
+    password: 'User123!',
+    role: 'C',
+    name: 'Korea University User', 
+    organization: '고려대학교',
     permissions: ['소속 기관 문서 조회', '본인 업로드 문서 관리']
   }
 };
@@ -187,20 +203,40 @@ function LoginPage({ onLogin }) {
                 size="small"
                 fullWidth
                 sx={{ mb: 1 }}
-                onClick={() => handleQuickLogin('admin@test.go.kr', 'admin')}
+                onClick={() => handleQuickLogin('admin@jbnu.ac.kr', 'admin')}
               >
-                전북대 관리자 (admin@test.go.kr)
+                전북대 관리자 (admin@jbnu.ac.kr)
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                fullWidth
+                sx={{ mb: 1 }}
+                onClick={() => handleQuickLogin('admin@korea.ac.kr', 'admin')}
+              >
+                고려대 관리자 (admin@korea.ac.kr)
               </Button>
             </Box>
           ) : (
-            <Button
-              variant="outlined"
-              size="small"
-              fullWidth
-              onClick={() => handleQuickLogin('user@test.go.kr', 'user')}
-            >
-              전북대 사용자 (user@test.go.kr)
-            </Button>
+            <Box>
+              <Button
+                variant="outlined"
+                size="small"
+                fullWidth
+                sx={{ mb: 1 }}
+                onClick={() => handleQuickLogin('user@jbnu.ac.kr', 'user')}
+              >
+                전북대 사용자 (user@jbnu.ac.kr)
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                fullWidth
+                onClick={() => handleQuickLogin('user@korea.ac.kr', 'user')}
+              >
+                고려대 사용자 (user@korea.ac.kr)
+              </Button>
+            </Box>
           )}
         </Paper>
       </Container>
@@ -245,8 +281,10 @@ function LoginPage({ onLogin }) {
           </Typography>
           <Typography variant="body2">
             • 시스템 관리자: admin@ragp.system / Admin123!<br/>
-            • 전북대 관리자: admin@test.go.kr / Admin123!<br/>
-            • 전북대 사용자: user@test.go.kr / User123!
+            • 전북대 관리자: admin@jbnu.ac.kr / Admin123!<br/>
+            • 전북대 사용자: user@jbnu.ac.kr / User123!<br/>
+            • 고려대 관리자: admin@korea.ac.kr / Admin123!<br/>
+            • 고려대 사용자: user@korea.ac.kr / User123!
           </Typography>
         </Box>
       </Paper>

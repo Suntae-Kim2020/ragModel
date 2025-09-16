@@ -41,7 +41,8 @@ function AdminPage({ user }) {
 
   const fetchAssistants = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/assistants`);
+      const params = user?.organization ? { organization: user.organization } : {};
+      const response = await axios.get(`${API_BASE_URL}/assistants`, { params });
       setExistingAssistants(response.data.assistants || []);
     } catch (error) {
       console.error('Failed to fetch assistants:', error);
@@ -95,12 +96,14 @@ function AdminPage({ user }) {
 
   const handleFileChange = async (event) => {
     const selectedFile = event.target.files[0];
-    if (selectedFile && selectedFile.type === 'application/pdf') {
+    if (selectedFile && (selectedFile.type === 'application/pdf' || 
+        selectedFile.name.toLowerCase().endsWith('.hwp') || 
+        selectedFile.name.toLowerCase().endsWith('.hwpx'))) {
       setFile(selectedFile);
       setMessage(null);
       
       // 파일명에서 확장자 제거한 것을 문서 제목으로 자동 입력
-      const titleFromFilename = selectedFile.name.replace('.pdf', '');
+      const titleFromFilename = selectedFile.name.replace(/\.(pdf|hwp|hwpx)$/i, '');
       setDocumentTitle(titleFromFilename);
       
       // 파일명에서 키워드 추출해서 태그로 자동 입력
@@ -118,7 +121,7 @@ function AdminPage({ user }) {
       
       // 기관명은 로그인한 사용자의 기관명을 사용 (이미 설정됨)
     } else {
-      setMessage({ type: 'error', text: 'PDF 파일만 업로드 가능합니다.' });
+      setMessage({ type: 'error', text: 'PDF와 HWP 파일만 업로드 가능합니다.' });
       setFile(null);
     }
   };
@@ -165,12 +168,21 @@ function AdminPage({ user }) {
         text: `문서가 성공적으로 업로드되었습니다. (${response.data.total_chunks}개 청크, ${response.data.total_pages}페이지)` 
       });
       
+      // 어시스턴트 목록 새로고침 (새로 생성된 어시스턴트 ID 반영)
+      await fetchAssistants();
+      
       // Reset form (기관명은 로그인한 사용자 기관명 유지)
       setFile(null);
       setDocumentTitle('');
       setTags('');
-      setAssistantId('');
+      // 어시스턴트 ID를 방금 생성한 ID로 설정하여 사용자가 확인할 수 있도록 함
+      // setAssistantId(''); // 기존 코드 - 빈 값으로 설정
       document.getElementById('file-input').value = '';
+      
+      // 새로고침 후 약간의 지연을 두고 다시 한번 어시스턴트 목록 가져오기
+      setTimeout(async () => {
+        await fetchAssistants();
+      }, 500);
       
     } catch (error) {
       setMessage({ 
@@ -214,11 +226,17 @@ function AdminPage({ user }) {
           />
 
           <Autocomplete
+            key={existingAssistants.length} // 목록 변경 시 강제 리렌더링
             fullWidth
             freeSolo
             options={existingAssistants}
             value={assistantId}
+            onChange={(event, newValue) => {
+              // 드롭다운에서 선택했을 때
+              setAssistantId(newValue || '');
+            }}
             onInputChange={(event, newValue) => {
+              // 직접 입력했을 때
               setAssistantId(newValue || '');
             }}
             renderInput={(params) => (
@@ -227,6 +245,7 @@ function AdminPage({ user }) {
                 label="어시스턴트 ID"
                 required
                 helperText="기존 어시스턴트를 선택하거나 새로운 ID를 입력하세요"
+                placeholder="어시스턴트 ID를 선택하거나 입력하세요"
               />
             )}
             sx={{ mb: 3 }}
@@ -234,7 +253,7 @@ function AdminPage({ user }) {
 
           <Box sx={{ mb: 3 }}>
             <input
-              accept="application/pdf"
+              accept="application/pdf,.hwp,.hwpx"
               style={{ display: 'none' }}
               id="file-input"
               type="file"
@@ -248,7 +267,7 @@ function AdminPage({ user }) {
                 fullWidth
                 sx={{ p: 2 }}
               >
-                PDF 파일 선택
+                PDF/HWP 파일 선택
               </Button>
             </label>
             {file && (

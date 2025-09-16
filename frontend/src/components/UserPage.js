@@ -16,12 +16,32 @@ import {
   Divider,
   Chip,
   Checkbox,
-  ListItemText
+  ListItemText,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails
 } from '@mui/material';
-import { Send, Source } from '@mui/icons-material';
+import { Send, Source, ExpandMore } from '@mui/icons-material';
 import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8000';
+
+// HTML 태그 정리 함수
+const cleanHtml = (html) => {
+  if (!html) return '';
+  
+  return html
+    // 빈 텍스트 태그 제거: <text></text> 또는 <text> </text>
+    .replace(/<text[^>]*>\s*<\/text>/g, '')
+    // 빈 태그들 제거
+    .replace(/<(\w+)[^>]*>\s*<\/\1>/g, '')
+    // 연속된 공백 정리
+    .replace(/\s+/g, ' ')
+    .trim();
+};
 
 function UserPage({ user }) {
   const [assistants, setAssistants] = useState([]);
@@ -32,6 +52,10 @@ function UserPage({ user }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [selectedSourceIndex, setSelectedSourceIndex] = useState(0);
+  const [responseMode, setResponseMode] = useState('individual');
+  const [individualResponses, setIndividualResponses] = useState([]);
+  const [comparisonTable, setComparisonTable] = useState('');
+  const [comparisonLoading, setComparisonLoading] = useState(false);
 
   useEffect(() => {
     fetchAssistants();
@@ -39,6 +63,7 @@ function UserPage({ user }) {
 
   const fetchAssistants = async () => {
     try {
+      // 질의응답에서는 모든 어시스턴트 목록 가져오기 (organization 필터 제거)
       const response = await axios.get(`${API_BASE_URL}/assistants`);
       setAssistants(response.data.assistants);
     } catch (error) {
@@ -51,6 +76,34 @@ function UserPage({ user }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    await handleSubmitQuery();
+  };
+
+  const handleSourceClick = (index) => {
+    setSelectedSourceIndex(index);
+  };
+
+  const handleResponseModeChange = (event) => {
+    const newMode = event.target.value;
+    setResponseMode(newMode);
+    
+    // Clear previous responses immediately when mode changes
+    setAnswer('');
+    setSources([]);
+    setIndividualResponses([]);
+    setSelectedSourceIndex(0);
+    
+    // If there's a question and multiple assistants selected, auto-submit with new mode
+    if (question.trim() && selectedAssistant.length >= 2) {
+      // Use the new mode directly in the API call
+      setTimeout(() => {
+        handleSubmitQueryWithMode(newMode);
+      }, 100); // Small delay to ensure state is updated
+    }
+  };
+
+  const handleSubmitQueryWithMode = async (mode = null) => {
+    const actualMode = mode || responseMode;
     
     if (!question.trim()) {
       setMessage({ type: 'error', text: '질문을 입력해주세요.' });
@@ -61,9 +114,14 @@ function UserPage({ user }) {
     setMessage(null);
     setAnswer('');
     setSources([]);
+    setIndividualResponses([]);
+    setComparisonTable('');
+    setComparisonLoading(false);
 
     const formData = new FormData();
     formData.append('question', question);
+    formData.append('response_mode', actualMode);
+    formData.append('summary_mode', actualMode === 'integrated');
     if (selectedAssistant.length > 0) {
       formData.append('assistant_ids', JSON.stringify(selectedAssistant));
     }
@@ -71,12 +129,41 @@ function UserPage({ user }) {
     try {
       const response = await axios.post(`${API_BASE_URL}/query`, formData);
       
-      setAnswer(response.data.answer);
-      setSources(response.data.sources || []);
-      setSelectedSourceIndex(0);
+      console.log('Response type:', response.data.response_type);
+      console.log('Actual mode used:', actualMode);
       
-      if (response.data.sources?.length === 0) {
-        setMessage({ type: 'warning', text: '관련된 문서를 찾을 수 없습니다.' });
+      if (response.data.response_type === 'individual') {
+        // Individual responses
+        setIndividualResponses(response.data.individual_responses || []);
+        setAnswer(''); // Clear integrated answer
+        setSources([]); // Clear integrated sources
+        
+        // Check if comparison keywords exist and multiple assistants selected
+        const comparison_keywords = ["비교", "차이", "다른점", "구별", "표", "분석", "대조", "vs", "versus", "비교분석"];
+        const hasComparisonKeyword = comparison_keywords.some(keyword => question.includes(keyword));
+        
+        // Set comparison table if available
+        if (response.data.comparison_table) {
+          setComparisonTable(response.data.comparison_table);
+          setComparisonLoading(false);
+        } else if (hasComparisonKeyword && selectedAssistant.length >= 2) {
+          // Show loading message if comparison should be generated but not yet available
+          setComparisonLoading(true);
+        }
+        
+        if (response.data.individual_responses?.length === 0) {
+          setMessage({ type: 'warning', text: '관련된 문서를 찾을 수 없습니다.' });
+        }
+      } else {
+        // Integrated response (current behavior)
+        setAnswer(response.data.answer);
+        setSources(response.data.sources || []);
+        setSelectedSourceIndex(0);
+        setIndividualResponses([]); // Clear individual responses
+        
+        if (response.data.sources?.length === 0) {
+          setMessage({ type: 'warning', text: '관련된 문서를 찾을 수 없습니다.' });
+        }
       }
       
     } catch (error) {
@@ -89,8 +176,8 @@ function UserPage({ user }) {
     }
   };
 
-  const handleSourceClick = (index) => {
-    setSelectedSourceIndex(index);
+  const handleSubmitQuery = async () => {
+    await handleSubmitQueryWithMode();
   };
 
   return (
@@ -145,6 +232,15 @@ function UserPage({ user }) {
                 </Select>
               </FormControl>
 
+              {/* 비교 안내 (어시스턴트가 2개 이상 선택된 경우에만 표시) */}
+              {selectedAssistant.length >= 2 && (
+                <Box sx={{ mb: 2, p: 2, backgroundColor: '#e3f2fd', borderRadius: 1 }}>
+                  <Typography variant="body2" color="primary">
+                    💡 여러 어시스턴트가 선택되었습니다. 질의 내용에 '비교', '분석', '차이' 등의 키워드가 포함되면 자동으로 비교표가 제공됩니다.
+                  </Typography>
+                </Box>
+              )}
+
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <TextField
                   fullWidth
@@ -171,14 +267,166 @@ function UserPage({ user }) {
 
             {/* 답변 영역 */}
             <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+              {/* Individual Responses */}
+              {individualResponses.length > 0 && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    각 Assistant별 답변
+                  </Typography>
+                  {individualResponses.map((response, index) => (
+                    <Accordion key={index} defaultExpanded={true}>
+                      <AccordionSummary expandIcon={<ExpandMore />}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                            {response.assistant_name || response.assistant_id}
+                          </Typography>
+                          <Chip 
+                            label={`신뢰도: ${Math.round(response.confidence * 100)}%`} 
+                            size="small" 
+                            color={response.confidence > 0.7 ? "success" : response.confidence > 0.4 ? "warning" : "error"}
+                          />
+                          {response.sources && response.sources.length > 0 && (
+                            <Chip 
+                              label={`출처: ${response.sources.length}개`} 
+                              size="small" 
+                              variant="outlined"
+                            />
+                          )}
+                        </Box>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Box 
+                          sx={{ 
+                            whiteSpace: 'pre-wrap', 
+                            lineHeight: 1.6, 
+                            mb: 2,
+                            '& table': {
+                              borderCollapse: 'collapse',
+                              width: '100%',
+                              marginTop: 1,
+                              marginBottom: 1,
+                              border: '1px solid #ddd'
+                            },
+                            '& th, & td': {
+                              border: '1px solid #ddd',
+                              padding: '6px 10px',
+                              textAlign: 'left',
+                              fontSize: '0.875rem'
+                            },
+                            '& th': {
+                              backgroundColor: '#f0f0f0',
+                              fontWeight: 'bold'
+                            }
+                          }}
+                          dangerouslySetInnerHTML={{ __html: cleanHtml(response.answer) }}
+                        />
+                        
+                        {response.sources && response.sources.length > 0 && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" gutterBottom>
+                              출처 ({response.sources.length}개):
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                              {response.sources.map((source, sourceIndex) => (
+                                <Chip
+                                  key={sourceIndex}
+                                  label={`${source.document_title} (p.${source.page_number})`}
+                                  onClick={() => {
+                                    setSources(response.sources);
+                                    handleSourceClick(sourceIndex);
+                                  }}
+                                  clickable
+                                  size="small"
+                                  icon={<Source />}
+                                />
+                              ))}
+                            </Box>
+                          </Box>
+                        )}
+                      </AccordionDetails>
+                    </Accordion>
+                  ))}
+                </Box>
+              )}
+
+              {/* Comparison Table Loading */}
+              {comparisonLoading && (
+                <Box sx={{ mb: 3, textAlign: 'center', p: 3, backgroundColor: '#f0f7ff', borderRadius: 1 }}>
+                  <CircularProgress size={20} sx={{ mr: 1 }} />
+                  <Typography variant="body1" color="primary" sx={{ display: 'inline' }}>
+                    비교표 생성중입니다...
+                  </Typography>
+                </Box>
+              )}
+
+              {/* Comparison Table */}
+              {comparisonTable && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    비교 분석표
+                  </Typography>
+                  <Box 
+                    sx={{ 
+                      '& table': {
+                        borderCollapse: 'collapse',
+                        width: '100%',
+                        marginTop: 1,
+                        marginBottom: 1,
+                        border: '1px solid #ddd',
+                        fontSize: '0.875rem'
+                      },
+                      '& th, & td': {
+                        border: '1px solid #ddd',
+                        padding: '8px 12px',
+                        textAlign: 'left',
+                        verticalAlign: 'top'
+                      },
+                      '& th': {
+                        backgroundColor: '#e3f2fd',
+                        fontWeight: 'bold',
+                        color: '#1565c0'
+                      },
+                      '& tr:nth-of-type(even)': {
+                        backgroundColor: '#f8f9fa'
+                      }
+                    }}
+                    dangerouslySetInnerHTML={{ __html: cleanHtml(comparisonTable) }}
+                  />
+                </Box>
+              )}
+
+              {/* Integrated Response */}
               {answer && (
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="h6" gutterBottom>
-                    답변
+                    통합 답변
                   </Typography>
-                  <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
-                    {answer}
-                  </Typography>
+                  <Box 
+                    sx={{ 
+                      whiteSpace: 'pre-wrap', 
+                      lineHeight: 1.6,
+                      '& table': {
+                        borderCollapse: 'collapse',
+                        width: '100%',
+                        marginTop: 2,
+                        marginBottom: 2,
+                        border: '1px solid #ddd'
+                      },
+                      '& th, & td': {
+                        border: '1px solid #ddd',
+                        padding: '8px 12px',
+                        textAlign: 'left'
+                      },
+                      '& th': {
+                        backgroundColor: '#f5f5f5',
+                        fontWeight: 'bold'
+                      },
+                      '& tr:nth-of-type(even)': {
+                        backgroundColor: '#f9f9f9'
+                      }
+                    }}
+                    dangerouslySetInnerHTML={{ __html: cleanHtml(answer) }}
+                  />
                   
                   {sources.length > 0 && (
                     <Box sx={{ mt: 2 }}>
