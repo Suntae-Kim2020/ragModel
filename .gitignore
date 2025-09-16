@@ -40,3 +40,7 @@ opensearch-data/
 # Temp files
 *.tmp
 *.temp
+
+# Security - Service Account Keys
+service-account-key.json
+*.json
