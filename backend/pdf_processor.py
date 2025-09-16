@@ -62,7 +62,7 @@ class PDFProcessor:
         
         return '\n'.join(lines[start_idx:end_idx]).strip()
     
-    def chunk_text(self, pages_text: List[Dict], chunk_size: int = 500, overlap: int = 50) -> List[Dict[str, Any]]:
+    def chunk_text(self, pages_text: List[Dict], chunk_size: int = 1500, overlap: int = 200) -> List[Dict[str, Any]]:
         """텍스트를 청크로 분할"""
         chunks = []
         chunk_index = 0
@@ -117,6 +117,7 @@ class PDFProcessor:
             chunk['embedding'] = embeddings[i].tolist()
         
         return chunks
+    
     
     def process_pdf_for_storage(
         self, 

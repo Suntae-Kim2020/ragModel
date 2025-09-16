@@ -52,7 +52,7 @@ async def upload_document(
         # Parse tags from JSON string
         tags_list = json.loads(tags) if tags else []
         
-        # Save uploaded file temporarily
+        # Save uploaded PDF file temporarily
         with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
             content = await file.read()
             tmp_file.write(content)
@@ -74,7 +74,7 @@ async def upload_document(
             chunk_id = osearch_client.add_document_chunk(chunk)
             stored_chunks.append(chunk_id)
         
-        # Clean up temporary file
+        # Clean up temporary files
         os.unlink(tmp_file_path)
         
         return {
@@ -86,7 +86,7 @@ async def upload_document(
         }
         
     except Exception as e:
-        # Clean up temporary file on error
+        # Clean up temporary files on error
         if 'tmp_file_path' in locals():
             try:
                 os.unlink(tmp_file_path)
@@ -95,9 +95,9 @@ async def upload_document(
         raise HTTPException(status_code=500, detail=f"Error processing document: {str(e)}")
 
 @app.get("/assistants")
-async def get_assistants():
+async def get_assistants(organization: str = None):
     try:
-        assistants = osearch_client.get_assistants()
+        assistants = osearch_client.get_assistants(organization)
         return {"assistants": assistants}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting assistants: {str(e)}")
@@ -106,17 +106,25 @@ async def get_assistants():
 async def query_documents(
     question: str = Form(...),
     assistant_id: Optional[str] = Form(None),
-    assistant_ids: Optional[str] = Form(None)
+    assistant_ids: Optional[str] = Form(None),
+    response_mode: str = Form("individual"),  # "individual" or "integrated"
+    summary_mode: bool = Form(False)  # Enhanced summary mode
 ):
     try:
         # Handle multiple assistant IDs
         if assistant_ids:
             import json
             assistant_list = json.loads(assistant_ids)
-            response = rag_service.get_answer(question, assistant_list)
+            
+            if response_mode == "individual":
+                # Individual responses from each assistant
+                response = rag_service.get_individual_answers(question, assistant_list, summary_mode)
+            else:
+                # Integrated response (current behavior)
+                response = rag_service.get_answer(question, assistant_list, summary_mode)
         else:
             # Handle single assistant ID (backward compatibility)
-            response = rag_service.get_answer(question, assistant_id)
+            response = rag_service.get_answer(question, assistant_id, summary_mode)
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")

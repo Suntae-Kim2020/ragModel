@@ -57,6 +57,9 @@ class OpenSearchClient:
             print(f"Created index: {self.index_name}")
     
     def add_document_chunk(self, chunk_data: Dict[str, Any]) -> str:
+        # 매번 인덱스 존재 확인 및 생성 (올바른 매핑 보장)
+        self._create_index_if_not_exists()
+        
         response = self.client.index(
             index=self.index_name,
             body=chunk_data
@@ -80,7 +83,7 @@ class OpenSearchClient:
                     ]
                 }
             },
-            "_source": ["content", "document_title", "page_number", "chunk_index", "tags", "organization", "document_type"]
+            "_source": ["content", "document_title", "page_number", "chunk_index", "tags", "organization", "document_type", "assistant_id"]
         }
         
         if assistant_id:
@@ -91,7 +94,7 @@ class OpenSearchClient:
         response = self.client.search(index=self.index_name, body=query)
         return response['hits']['hits']
     
-    def get_assistants(self) -> List[str]:
+    def get_assistants(self, organization: str = None) -> List[str]:
         query = {
             "aggs": {
                 "assistants": {
@@ -103,6 +106,14 @@ class OpenSearchClient:
             },
             "size": 0
         }
+        
+        # 조직별 필터 추가
+        if organization:
+            query["query"] = {
+                "term": {
+                    "organization": organization
+                }
+            }
         
         response = self.client.search(index=self.index_name, body=query)
         assistants = []
