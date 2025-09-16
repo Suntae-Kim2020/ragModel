@@ -16,21 +16,24 @@ COPY . .
 # Build the app
 RUN npm run build
 
-# Production stage  
-FROM nginx:alpine
+# Production stage - use Node.js serve instead of nginx
+FROM node:18-alpine
 
-# Copy custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Install serve globally
+RUN npm install -g serve
+
+# Set working directory
+WORKDIR /app
 
 # Copy built app from build stage
-COPY --from=build /app/build /usr/share/nginx/html
+COPY --from=build /app/build ./build
 
 # Expose port
 EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
-# Start nginx as root (Cloud Run will handle security)
-CMD ["nginx", "-g", "daemon off;"]
+# Start serve on port 3000
+CMD ["serve", "-s", "build", "-l", "3000"]
