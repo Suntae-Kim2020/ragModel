@@ -17,7 +17,10 @@ app = FastAPI(title="RAG Document Management System")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "https://rag-frontend-305551183348.asia-northeast3.run.app"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
