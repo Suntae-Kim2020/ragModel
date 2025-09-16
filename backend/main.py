@@ -31,10 +31,27 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
-# Initialize services
-osearch_client = OpenSearchClient()
-pdf_processor = PDFProcessor()
-rag_service = RAGService()
+# Initialize services with error handling
+try:
+    osearch_client = OpenSearchClient()
+    print("OpenSearch client initialized")
+except Exception as e:
+    print(f"Warning: OpenSearch client initialization failed: {e}")
+    osearch_client = None
+
+try:
+    pdf_processor = PDFProcessor()
+    print("PDF processor initialized")
+except Exception as e:
+    print(f"Warning: PDF processor initialization failed: {e}")
+    pdf_processor = None
+
+try:
+    rag_service = RAGService()
+    print("RAG service initialized")
+except Exception as e:
+    print(f"Warning: RAG service initialization failed: {e}")
+    rag_service = None
 
 @app.post("/upload-document")
 async def upload_document(
@@ -47,6 +64,9 @@ async def upload_document(
 ):
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
+    
+    if not osearch_client or not pdf_processor:
+        raise HTTPException(status_code=503, detail="Service temporarily unavailable")
     
     try:
         # Parse tags from JSON string
@@ -96,11 +116,13 @@ async def upload_document(
 
 @app.get("/assistants")
 async def get_assistants(organization: str = None):
+    if not osearch_client:
+        return {"assistants": []}  # Return empty list if service unavailable
     try:
         assistants = osearch_client.get_assistants(organization)
         return {"assistants": assistants}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error getting assistants: {str(e)}")
+        return {"assistants": []}
 
 @app.post("/query")
 async def query_documents(
@@ -110,6 +132,9 @@ async def query_documents(
     response_mode: str = Form("individual"),  # "individual" or "integrated"
     summary_mode: bool = Form(False)  # Enhanced summary mode
 ):
+    if not rag_service:
+        raise HTTPException(status_code=503, detail="RAG service temporarily unavailable")
+    
     try:
         # Handle multiple assistant IDs
         if assistant_ids:
@@ -134,6 +159,9 @@ async def extract_keywords(
     text: str = Form(...)
 ):
     """OpenAI API를 사용하여 텍스트에서 키워드를 추출합니다."""
+    if not rag_service:
+        raise HTTPException(status_code=503, detail="RAG service temporarily unavailable")
+    
     try:
         keywords = rag_service.extract_keywords_with_openai(text)
         return {"keywords": keywords}
