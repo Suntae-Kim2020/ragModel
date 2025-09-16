@@ -63,7 +63,7 @@ jobs:
           --cpu 2 \
           --concurrency 80 \
           --max-instances 10 \
-          --port 8000 \
+          --port 8080 \
           --set-env-vars "ENVIRONMENT=production" \
           --set-env-vars "OPENSEARCH_HOST=opensearch-service" \
           --set-env-vars "OPENSEARCH_PORT=9200" \

@@ -32,12 +32,13 @@ ENV OPENSEARCH_PORT=${OPENSEARCH_PORT:-"9200"}
 ENV OPENSEARCH_USERNAME=${OPENSEARCH_USERNAME:-"admin"}
 ENV OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD:-"admin"}
 
-# Expose port
-EXPOSE 8000
+# Expose port (Cloud Run will set PORT environment variable)
+EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+# Create a non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN chown -R appuser:appuser /app
+USER appuser
 
-# Run the application as root (Cloud Run handles security)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application using PORT environment variable from Cloud Run
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]

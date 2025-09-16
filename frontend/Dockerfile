@@ -19,8 +19,8 @@ RUN npm run build
 # Production stage - use Node.js serve instead of nginx
 FROM node:18-alpine
 
-# Install serve globally
-RUN npm install -g serve
+# Install serve globally and wget for health checks
+RUN npm install -g serve && apk add --no-cache wget
 
 # Set working directory
 WORKDIR /app
@@ -28,12 +28,14 @@ WORKDIR /app
 # Copy built app from build stage
 COPY --from=build /app/build ./build
 
+# Create a non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nextjs -u 1001
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+
 # Expose port (Cloud Run will set PORT environment variable)
 EXPOSE 8080
 
-# Health check using PORT environment variable
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-8080}/ || exit 1
-
 # Start serve on port from environment variable (Cloud Run requirement)
-CMD sh -c "serve -s build -l ${PORT:-8080}"
+CMD serve -s build -p ${PORT:-8080} --host 0.0.0.0 --no-clipboard
