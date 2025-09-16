@@ -11,6 +11,7 @@ env:
   REGION: asia-northeast3
   BACKEND_SERVICE_NAME: rag-backend
   FRONTEND_SERVICE_NAME: rag-frontend
+  REPOSITORY_NAME: cloud-run-source-deploy
 
 jobs:
   deploy:
@@ -42,7 +43,7 @@ jobs:
 
     - name: Create Artifact Registry repository
       run: |
-        gcloud artifacts repositories create rag-repo \
+        gcloud artifacts repositories create ${{ env.REPOSITORY_NAME }} \
           --repository-format=docker \
           --location=${{ env.REGION }} \
           --description="RAG Model Application" || true
@@ -51,14 +52,14 @@ jobs:
       run: |
         cd backend
         echo "Building backend image directly with Docker..."
-        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }} .
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }} .
         echo "Pushing backend image to registry..."
-        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }}
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }}
 
     - name: Deploy backend to Cloud Run
       run: |
         gcloud run deploy ${{ env.BACKEND_SERVICE_NAME }} \
-          --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }} \
+          --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }} \
           --platform managed \
           --region ${{ env.REGION }} \
           --allow-unauthenticated \
@@ -92,14 +93,14 @@ jobs:
         EOF
         
         echo "Building frontend image directly with Docker..."
-        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }} .
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }} .
         echo "Pushing frontend image to registry..."
-        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }}
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }}
 
     - name: Deploy frontend to Cloud Run
       run: |
         gcloud run deploy ${{ env.FRONTEND_SERVICE_NAME }} \
-          --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }} \
+          --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }} \
           --platform managed \
           --region ${{ env.REGION }} \
           --allow-unauthenticated \
