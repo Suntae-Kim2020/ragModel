@@ -50,7 +50,7 @@ jobs:
     - name: Build and push backend image
       run: |
         cd backend
-        gcloud builds submit --tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }} --suppress-logs || true
+        gcloud builds submit --tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }} --quiet
 
     - name: Deploy backend to Cloud Run
       run: |
@@ -88,7 +88,7 @@ jobs:
         GENERATE_SOURCEMAP=false
         EOF
         
-        gcloud builds submit --tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }} --suppress-logs || true
+        gcloud builds submit --tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/rag-repo/${{ env.FRONTEND_SERVICE_NAME }}:${{ github.sha }} --quiet
 
     - name: Deploy frontend to Cloud Run
       run: |
