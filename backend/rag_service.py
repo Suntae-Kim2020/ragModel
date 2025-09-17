@@ -477,34 +477,29 @@ class RAGService:
         # 3. 질문을 임베딩으로 변환
         question_embedding = self.embedding_model.encode(question).tolist()
         
-        # 3. 하이브리드 검색으로 문서 청크 검색 (키워드 + 벡터 검색 with RRF)
-        # top_k=5로 조정하여 관련성 높은 문서만 선별
-        # 비교 모드에서는 컨텍스트 길이 제한을 고려하여 더 적은 청크 사용
+        # 3. 벡터 검색으로 문서 청크 검색
         if summary_mode and has_comparison and multiple_assistants:
-            search_size = 6  # 비교 모드 (8->6)
-            assistant_search_size = 3  # 각 어시스턴트당 (4->3)
+            search_size = 8  # 비교 모드
+            assistant_search_size = 4  # 각 어시스턴트당
         else:
-            search_size = 5 if summary_mode else 5  # 통일된 크기로 조정 (20->5, 10->5)
-            assistant_search_size = 5 if summary_mode else 3  # 각 어시스턴트당 (10->5, 6->3)
+            search_size = 20 if summary_mode else 10  # 기본 검색 크기 복구
+            assistant_search_size = 10 if summary_mode else 6  # 각 어시스턴트당 복구
         
         if isinstance(assistant_id, list):
             # 여러 어시스턴트에서 검색
             all_chunks = []
             for aid in assistant_id:
-                # 하이브리드 검색 사용
-                chunks = self.opensearch_client.hybrid_search(
-                    question, 
+                chunks = self.opensearch_client.search_similar_chunks(
                     question_embedding,
                     assistant_id=aid,
-                    size=assistant_search_size  # 각 어시스턴트당 개수
+                    size=assistant_search_size
                 )
                 all_chunks.extend(chunks)
             # 점수순으로 정렬하고 선택
             similar_chunks = sorted(all_chunks, key=lambda x: x['_score'], reverse=True)[:search_size]
         else:
-            # 단일 어시스턴트 또는 전체 검색 - 하이브리드 검색 사용
-            similar_chunks = self.opensearch_client.hybrid_search(
-                question,
+            # 단일 어시스턴트 또는 전체 검색
+            similar_chunks = self.opensearch_client.search_similar_chunks(
                 question_embedding, 
                 assistant_id=assistant_id,
                 size=search_size
