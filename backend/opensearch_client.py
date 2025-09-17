@@ -86,7 +86,7 @@ class OpenSearchClient:
             "_source": ["content", "document_title", "page_number", "chunk_index", "tags", "organization", "document_type", "assistant_id"]
         }
 
-    def hybrid_search(self, query_text: str, query_embedding: List[float], assistant_id: str = None, size: int = 20) -> List[Dict]:
+    def hybrid_search(self, query_text: str, query_embedding: List[float], assistant_id: str = None, size: int = 5) -> List[Dict]:
         """하이브리드 검색: 키워드 검색 + 벡터 검색을 RRF로 결합"""
         
         # 1. 키워드 검색 (BM25)
@@ -98,9 +98,10 @@ class OpenSearchClient:
                         {
                             "multi_match": {
                                 "query": query_text,
-                                "fields": ["content^2", "document_title^1.5"],
+                                "fields": ["content^3", "document_title^2"],
                                 "type": "best_fields",
-                                "fuzziness": "AUTO"
+                                "fuzziness": "1",
+                                "minimum_should_match": "70%"
                             }
                         }
                     ]
@@ -153,7 +154,7 @@ class OpenSearchClient:
             response = self.client.search(index=self.index_name, body=vector_query)
             return response['hits']['hits']
     
-    def _apply_rrf(self, keyword_hits: List[Dict], vector_hits: List[Dict], final_size: int, k: int = 60) -> List[Dict]:
+    def _apply_rrf(self, keyword_hits: List[Dict], vector_hits: List[Dict], final_size: int, k: int = 10) -> List[Dict]:
         """Reciprocal Rank Fusion 알고리즘 적용"""
         scores = {}
         
