@@ -341,6 +341,48 @@ class RAGService:
             
         return converted_question
     
+    def _expand_short_query(self, question: str) -> str:
+        """짧은 질의를 확장하여 검색 품질 향상"""
+        # 일반적인 학사 관련 짧은 질의 확장 패턴
+        expansion_patterns = {
+            # 학사 관련
+            '휴학': '휴학 신청 방법 절차 조건',
+            '복학': '복학 신청 방법 절차 조건',
+            '등록': '등록금 납부 방법 기간',
+            '수강': '수강신청 방법 절차 기간',
+            '졸업': '졸업 요건 조건 절차',
+            '학점': '학점 이수 요건 조건',
+            '성적': '성적 평가 기준 방법',
+            '장학금': '장학금 신청 방법 조건',
+            '전과': '전과 신청 방법 조건',
+            '부전공': '부전공 신청 방법 조건',
+            '복수전공': '복수전공 신청 방법 조건',
+            '학사경고': '학사경고 기준 조치',
+            '계절학기': '계절학기 신청 방법',
+            '교환학생': '교환학생 신청 방법',
+            
+            # 행정 관련
+            '등록증명서': '등록증명서 발급 방법',
+            '재학증명서': '재학증명서 발급 방법',
+            '성적증명서': '성적증명서 발급 방법',
+            '졸업증명서': '졸업증명서 발급 방법',
+            
+            # 기타
+            '기숙사': '기숙사 신청 방법 조건',
+            '도서관': '도서관 이용 방법 시간'
+        }
+        
+        # 키워드가 포함된 경우 확장
+        for keyword, expansion in expansion_patterns.items():
+            if keyword in question:
+                return f"{question} {expansion}"
+        
+        # 패턴에 없는 경우 일반적인 확장
+        if '?' in question or '무엇' in question or '어떻게' in question:
+            return f"{question} 방법 절차 조건"
+        else:
+            return f"{question}에 대해 자세히 알려주세요"
+    
     def _generate_comparison_table(self, question: str, individual_responses: List[Dict]) -> str:
         """개별 응답들을 분석하여 비교표를 생성합니다."""
         try:
@@ -403,6 +445,10 @@ class RAGService:
         except:
             pass  # 인코딩 복구 실패시 원본 사용
         
+        # 0. 짧은 질의 확장 (3단어 이하인 경우)
+        if len(question.split()) <= 3:
+            question = self._expand_short_query(question)
+        
         # 1. 질문에서 키워드 추출
         keywords = self._extract_keywords_from_question(question)
         
@@ -417,22 +463,24 @@ class RAGService:
         # 3. 질문을 임베딩으로 변환
         question_embedding = self.embedding_model.encode(question).tolist()
         
-        # 3. 유사한 문서 청크 검색 (여러 어시스턴트 지원)
-        # Summary mode에서는 더 많은 청크를 가져옴
+        # 3. 하이브리드 검색으로 문서 청크 검색 (키워드 + 벡터 검색 with RRF)
+        # Summary mode에서는 더 많은 청크를 가져옴 (top_k=20으로 증가)
         # 비교 모드에서는 컨텍스트 길이 제한을 고려하여 더 적은 청크 사용
         if summary_mode and has_comparison and multiple_assistants:
-            search_size = 4  # 비교 모드에서는 토큰 절약
-            assistant_search_size = 2
+            search_size = 8  # 비교 모드에서 증가 (4->8)
+            assistant_search_size = 4  # 각 어시스턴트당 증가 (2->4)
         else:
-            search_size = 8 if summary_mode else 5
-            assistant_search_size = 4 if summary_mode else 3
+            search_size = 20 if summary_mode else 10  # 기본 크기 증가 (8->20, 5->10)
+            assistant_search_size = 10 if summary_mode else 6  # 각 어시스턴트당 증가 (4->10, 3->6)
         
         if isinstance(assistant_id, list):
             # 여러 어시스턴트에서 검색
             all_chunks = []
             for aid in assistant_id:
-                chunks = self.opensearch_client.search_similar_chunks(
-                    question_embedding, 
+                # 하이브리드 검색 사용
+                chunks = self.opensearch_client.hybrid_search(
+                    question, 
+                    question_embedding,
                     assistant_id=aid,
                     size=assistant_search_size  # 각 어시스턴트당 개수
                 )
@@ -440,8 +488,9 @@ class RAGService:
             # 점수순으로 정렬하고 선택
             similar_chunks = sorted(all_chunks, key=lambda x: x['_score'], reverse=True)[:search_size]
         else:
-            # 단일 어시스턴트 또는 전체 검색
-            similar_chunks = self.opensearch_client.search_similar_chunks(
+            # 단일 어시스턴트 또는 전체 검색 - 하이브리드 검색 사용
+            similar_chunks = self.opensearch_client.hybrid_search(
+                question,
                 question_embedding, 
                 assistant_id=assistant_id,
                 size=search_size
