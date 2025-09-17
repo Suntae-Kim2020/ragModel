@@ -245,9 +245,20 @@ class RAGService:
         individual_responses = []
         all_keywords = set()
         
+        # 비교 질문인 경우 개별 어시스턴트용 질문으로 변환
+        comparison_keywords = ["비교", "차이", "다른점", "구별", "표", "분석", "대조", "vs", "versus", "비교분석", "항목별로", "항목별", "항목으로", "구분하여", "나누어"]
+        is_comparison_question = any(keyword in question for keyword in comparison_keywords)
+        
         for assistant_id in assistant_ids:
             try:
-                response = self.get_answer(question, assistant_id, summary_mode)
+                # 비교 질문인 경우 개별 검색용 질문으로 변환
+                if is_comparison_question:
+                    # "휴학 규정을 항목별로 비교해줘" -> "휴학 규정에 대해 알려줘"
+                    individual_question = self._convert_to_individual_question(question)
+                else:
+                    individual_question = question
+                    
+                response = self.get_answer(individual_question, assistant_id, summary_mode)
                 individual_responses.append({
                     'assistant_id': assistant_id,
                     'assistant_name': assistant_id,  # TODO: Get actual assistant name from DB
@@ -271,7 +282,7 @@ class RAGService:
                 })
         
         # 비교 키워드 확인 및 자동 비교표 생성
-        comparison_keywords = ["비교", "차이", "다른점", "구별", "표", "분석", "대조", "vs", "versus", "비교분석"]
+        comparison_keywords = ["비교", "차이", "다른점", "구별", "표", "분석", "대조", "vs", "versus", "비교분석", "항목별로", "항목별", "항목으로", "구분하여", "나누어"]
         has_comparison = any(keyword in question for keyword in comparison_keywords)
         
         result = {
@@ -292,6 +303,44 @@ class RAGService:
         
         return result
     
+    def _convert_to_individual_question(self, question: str) -> str:
+        """비교 질문을 개별 검색용 질문으로 변환합니다."""
+        # 비교 관련 키워드 제거하고 핵심 주제만 추출
+        comparison_patterns = [
+            r'을?\s*항목별로\s*비교해?[달라|줘]?',
+            r'를?\s*항목별로\s*비교해?[달라|줘]?',
+            r'을?\s*비교해?[달라|줘]?',
+            r'를?\s*비교해?[달라|줘]?',
+            r'항목별로\s*',
+            r'비교해?[달라|줘]?',
+            r'차이점?을?\s*',
+            r'다른점?을?\s*',
+            r'구별해?[달라|줘]?',
+            r'분석해?[달라|줘]?',
+            r'대조해?[달라|줘]?'
+        ]
+        
+        import re
+        converted_question = question
+        
+        # 패턴별로 제거
+        for pattern in comparison_patterns:
+            converted_question = re.sub(pattern, '', converted_question)
+        
+        # 공백 정리
+        converted_question = re.sub(r'\s+', ' ', converted_question).strip()
+        
+        # 기본 질문 형태로 변환
+        if not converted_question.endswith(('에 대해', '에 대해서', '에 관해', '에 관해서', '은?', '는?', '을?', '를?')):
+            if converted_question:
+                converted_question += '에 대해 알려줘'
+            else:
+                converted_question = question  # 변환 실패시 원본 사용
+        else:
+            converted_question += ' 알려줘'
+            
+        return converted_question
+    
     def _generate_comparison_table(self, question: str, individual_responses: List[Dict]) -> str:
         """개별 응답들을 분석하여 비교표를 생성합니다."""
         try:
@@ -308,13 +357,23 @@ class RAGService:
             if not self.openai_client:
                 return None
                 
-            # 비교표 생성을 위한 간단한 프롬프트
+            # 비교표 생성을 위한 강화된 프롬프트
             comparison_prompt = f"""질문: {question}
 
-답변 요약:
-{chr(10).join([f"{aid}: {answer}" for aid, answer in assistant_data.items()])}
+각 어시스턴트의 답변:
+{chr(10).join([f"어시스턴트 {aid}: {answer}" for aid, answer in assistant_data.items()])}
 
-위 내용을 HTML 표로 비교해주세요. 어시스턴트를 열로, 주요 항목을 행으로 구성하고 각 셀은 30자 이내로 요약해주세요."""
+위 답변들을 분석하여 비교표를 생성해주세요. 다음 지침을 따라주세요:
+
+1. 각 답변에서 관련 내용을 적극적으로 찾아 추출하세요
+2. "구체적인 내용이 없다"거나 "나와있지 않다"는 답변이 있어도, 유사한 내용이나 관련 규정이 있다면 포함하세요
+3. HTML 표 형식으로 구성하세요:
+   - 열: 각 어시스턴트 (어시스턴트 1, 어시스턴트 2, ...)
+   - 행: 주요 비교 항목들 (신청 절차, 승인 조건, 기간 제한, 학점 관련, 등록금 관련 등)
+4. 각 셀은 간결하게 30자 이내로 요약하세요
+5. 내용이 없는 경우에만 "명시되지 않음"으로 표시하세요
+
+비교표를 HTML <table> 태그로 작성해주세요."""
 
             response = self.openai_client.chat.completions.create(
                 model="gpt-4",
