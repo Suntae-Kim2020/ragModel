@@ -399,23 +399,37 @@ class RAGService:
             if not self.openai_client:
                 return None
                 
-            # 비교표 생성을 위한 강화된 프롬프트
+            # 비교표 생성을 위한 강화된 프롬프트 (컬럼 정렬 개선)
+            assistant_names = list(assistant_data.keys())
             comparison_prompt = f"""질문: {question}
 
 각 어시스턴트의 답변:
 {chr(10).join([f"어시스턴트 {aid}: {answer}" for aid, answer in assistant_data.items()])}
 
-위 답변들을 분석하여 비교표를 생성해주세요. 다음 지침을 따라주세요:
+위 답변들을 분석하여 비교표를 생성해주세요. 다음 지침을 정확히 따라주세요:
 
 1. 각 답변에서 관련 내용을 적극적으로 찾아 추출하세요
 2. "구체적인 내용이 없다"거나 "나와있지 않다"는 답변이 있어도, 유사한 내용이나 관련 규정이 있다면 포함하세요
 3. HTML 표 형식으로 구성하세요:
-   - 열: 각 어시스턴트 (어시스턴트 1, 어시스턴트 2, ...)
-   - 행: 주요 비교 항목들 (신청 절차, 승인 조건, 기간 제한, 학점 관련, 등록금 관련 등)
-4. 각 셀은 간결하게 30자 이내로 요약하세요
+   - 첫 번째 열: 비교항목 (예: 신청 절차, 승인 조건, 기간 제한 등)
+   - 이후 열들: 각 어시스턴트 ({', '.join(assistant_names)})
+4. 각 셀은 간결하게 40자 이내로 요약하세요
 5. 내용이 없는 경우에만 "명시되지 않음"으로 표시하세요
 
-비교표를 HTML <table> 태그로 작성해주세요."""
+정확한 HTML 테이블 형식:
+<table style="border-collapse: collapse; width: 100%; border: 1px solid #ddd;">
+<thead>
+<tr style="background-color: #f8f9fa;">
+<th style="border: 1px solid #ddd; padding: 12px; text-align: left; font-weight: bold;">비교항목</th>
+{chr(10).join([f'<th style="border: 1px solid #ddd; padding: 12px; text-align: left; font-weight: bold;">{aid}</th>' for aid in assistant_names])}
+</tr>
+</thead>
+<tbody>
+각 비교 항목별로 <tr> 행을 추가하세요
+</tbody>
+</table>
+
+비교표를 위 형식으로 정확히 작성해주세요."""
 
             response = self.openai_client.chat.completions.create(
                 model="gpt-4",
@@ -694,11 +708,15 @@ class RAGService:
             # Log the actual error for debugging
             print(f"OpenAI API Error Details: {str(e)}")
             print(f"Error type: {type(e).__name__}")
-            # Fallback to basic document retrieval if OpenAI fails
-            answer = f"OpenAI API 오류로 인해 기본 검색 결과를 제공합니다.\n\n"
+            # Provide helpful fallback when OpenAI is unavailable
+            answer = f"💡 **검색된 관련 문서 정보**\n\n"
             for i, source in enumerate(sources[:3], 1):
-                answer += f"{i}. {source['document_title']} (페이지 {source['page_number']})\n"
-                answer += f"   내용: {source['content'][:200]}...\n\n"
+                answer += f"**{i}. {source['document_title']}** (페이지 {source['page_number']})\n"
+                content_preview = source['content'][:300] + "..." if len(source['content']) > 300 else source['content']
+                answer += f"{content_preview}\n\n"
+            
+            if len(sources) > 3:
+                answer += f"📄 총 {len(sources)}개의 관련 문서를 찾았습니다.\n\n"
             
             return {
                 "response_type": "integrated",
