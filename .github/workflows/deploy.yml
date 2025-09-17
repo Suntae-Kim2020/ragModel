@@ -69,9 +69,10 @@ jobs:
           --max-instances 10 \
           --port 8080 \
           --set-env-vars "ENVIRONMENT=production" \
-          --set-env-vars "OPENSEARCH_HOST=opensearch-service" \
+          --set-env-vars "OPENSEARCH_HOST=34.64.90.182" \
           --set-env-vars "OPENSEARCH_PORT=9200" \
-          --set-env-vars "OPENSEARCH_USER=admin" \
+          --set-env-vars "OPENSEARCH_USERNAME=admin" \
+          --set-env-vars "OPENSEARCH_PASSWORD=admin" \
           --set-env-vars "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" \
           --timeout 300
 

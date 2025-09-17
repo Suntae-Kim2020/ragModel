@@ -14,8 +14,19 @@ class RAGService:
         else:
             self.openai_client = None
         
-        self.embedding_model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
-        self.opensearch_client = OpenSearchClient()
+        # SentenceTransformer 초기화 (키워드 추출에는 OpenSearch 불필요)
+        try:
+            self.embedding_model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+        except Exception as e:
+            print(f"Warning: Embedding model initialization failed: {e}")
+            self.embedding_model = None
+        
+        # OpenSearch 클라이언트는 선택적으로 초기화
+        try:
+            self.opensearch_client = OpenSearchClient()
+        except Exception as e:
+            print(f"Warning: OpenSearch client initialization failed: {e}")
+            self.opensearch_client = None
     
     def _extract_keywords_from_question(self, question: str) -> List[str]:
         """질문에서 핵심 키워드를 추출합니다."""
