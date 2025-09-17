@@ -36,6 +36,14 @@ ENV OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD:-"admin"}
 # Expose port (Cloud Run will set PORT environment variable)
 EXPOSE 8080
 
+# Set environment variables for cache directories before creating user
+ENV TRANSFORMERS_CACHE=/app/.cache/huggingface/transformers
+ENV SENTENCE_TRANSFORMERS_HOME=/app/.cache/torch/sentence_transformers
+ENV HF_HOME=/app/.cache/huggingface
+
+# Pre-download the sentence transformer model as root to avoid permission issues
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')"
+
 # Create a non-root user and setup cache directories
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
@@ -44,14 +52,7 @@ RUN mkdir -p /app/.cache/huggingface/transformers && \
     mkdir -p /app/.cache/torch/sentence_transformers && \
     chown -R appuser:appuser /app
 
-# Set environment variables for cache directories
-ENV TRANSFORMERS_CACHE=/app/.cache/huggingface/transformers
-ENV SENTENCE_TRANSFORMERS_HOME=/app/.cache/torch/sentence_transformers
-
 USER appuser
-
-# Pre-download the sentence transformer model to avoid runtime permission issues
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')"
 
 # Run the application using PORT environment variable from Cloud Run
 CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]
